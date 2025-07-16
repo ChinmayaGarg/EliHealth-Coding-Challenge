@@ -121,6 +121,28 @@ app.get('/api/test-strips', async (req, res) => {
   }
 });
 
+app.get('/api/test-strips/history', async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT id, status, thumbnail_path AS filename, qr_code AS "qrCode", created_at 
+       FROM test_strip_submissions 
+       ORDER BY created_at DESC`
+    );
+
+    const host = req.protocol + '://' + req.get('host');
+
+    const updatedRows = rows.map((row: any) => ({
+      ...row,
+      imageUrl: `${host}/api/test-strips/${row.filename}`
+    }));
+    console.log(updatedRows);
+    res.json(updatedRows);
+  } catch (err) {
+    console.error('Error fetching history:', err);
+    res.status(500).json({ error: 'Failed to fetch history' });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Eli backend listening at http://localhost:${PORT}`);
