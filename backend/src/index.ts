@@ -163,6 +163,24 @@ app.get('/api/test-strips/:id', async (req, res) => {
     return res.status(500).json({ error: 'Failed to fetch submission' });
   }
 });
+
+
+// Get image by name
+app.get('/api/test-strips/uploads/:filename', (req, res) => {
+  const { filename } = req.params;
+  const filePath = path.join(__dirname, '../uploads', filename);
+
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error('Image send error:', err);
+      res.status(404).json({ error: 'Image not found' });
+    }
+  });
+});
+
+
+
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Eli backend listening at http://localhost:${PORT}`);
