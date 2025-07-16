@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
@@ -32,6 +33,7 @@ const HistoryScreen = () => {
   const navigation = useNavigation<HistoryScreenNavigationProp>();
   const [data, setData] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchHistory = async () => {
     try {
@@ -42,10 +44,16 @@ const HistoryScreen = () => {
       Alert.alert('Error', 'Could not load test strip history.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
     fetchHistory();
   }, []);
 
@@ -72,8 +80,12 @@ const HistoryScreen = () => {
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         />
       )}
+
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => navigation.navigate('Camera')}
