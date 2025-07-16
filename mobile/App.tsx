@@ -4,6 +4,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CameraScreen from './src/screens/CameraScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
+import { Provider as PaperProvider } from 'react-native-paper';
+
 
 export type RootStackParamList = {
   Camera: undefined;
@@ -14,6 +16,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
+    <PaperProvider>
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Camera" screenOptions={{
     headerShown: false
@@ -22,5 +25,6 @@ export default function App() {
         <Stack.Screen name="History" component={HistoryScreen} />
       </Stack.Navigator>
     </NavigationContainer>
+    </PaperProvider>
   );
 }

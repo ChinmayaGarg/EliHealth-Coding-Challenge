@@ -14,6 +14,7 @@ import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Snackbar } from 'react-native-paper';
 
 type HistoryScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -32,6 +33,7 @@ type Submission = {
 const HistoryScreen = () => {
   const navigation = useNavigation<HistoryScreenNavigationProp>();
   const [data, setData] = useState<Submission[]>([]);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -54,7 +56,9 @@ const HistoryScreen = () => {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchHistory();
+    fetchHistory().then(() => {
+        setSnackbarVisible(true);
+    });
   }, []);
 
   const renderItem = ({ item }: { item: Submission }) => (
@@ -92,6 +96,17 @@ const HistoryScreen = () => {
       >
         <Text style={styles.backText}>← Back to Camera</Text>
       </TouchableOpacity>
+      <Snackbar
+  visible={snackbarVisible}
+  onDismiss={() => setSnackbarVisible(false)}
+  duration={3000}
+  action={{
+    label: 'Dismiss',
+    onPress: () => setSnackbarVisible(false),
+  }}
+>
+  History refreshed!
+</Snackbar>
     </View>
   );
 };
