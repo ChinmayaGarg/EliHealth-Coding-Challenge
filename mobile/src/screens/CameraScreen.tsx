@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { RootStackParamList } from '../../App';
-import { checkImageBrightness, estimateBlur } from '../utils/checkImageQuality';
+import { processAndUploadImage } from '../utils/imageProcessor';
 
 type CameraScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -46,48 +46,18 @@ const CameraScreen = () => {
   const resetImage = () => setImageUri(null);
 
   const handleSubmit = async () => {
-    if (!imageUri) return;
-    setIsUploading(true);
+  if (!imageUri) return;
+  setIsUploading(true);
 
-    try {
-      const isBrightEnough = await checkImageBrightness(imageUri);
-      if (!isBrightEnough) {
-        throw new Error('Image Too Dark');
-      }
+  await processAndUploadImage(imageUri, setImageUri, setIsUploading, (qrCode) => {
+    console.log('Upload successful with QR:', qrCode);
+  }, () => {
+    resetImage();
+  });
 
-      const blurScore = await estimateBlur(imageUri);
-      if (blurScore < 150) {
-        throw new Error('Image is too blurry');
-      }
+  setIsUploading(false);
+};
 
-      const fileName = imageUri.split('/').pop()!;
-      const formData = new FormData();
-      formData.append('image', {
-        uri: imageUri,
-        name: fileName,
-        type: 'image/jpeg',
-      } as unknown as Blob);
-
-      const { data } = await axios.post('http://localhost:3000/api/test-strips/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      Alert.alert('Success', `QR Code: ${(data as any).qrCode}`);
-      resetImage();
-    } catch (error: any) {
-      const message =
-        error?.message === 'Image Too Dark'
-          ? 'Please retake in better lighting.'
-          : error?.message === 'Image is too blurry'
-          ? 'Please retake a sharper image.'
-          : error?.response?.status === 409
-          ? 'This test strip was already submitted.'
-          : 'Upload failed. Please try again.';
-      Alert.alert('Error', message);
-    } finally {
-      setIsUploading(false);
-    }
-  };
 
   if (!hasPermission) {
     return (
@@ -134,7 +104,6 @@ const CameraScreen = () => {
 };
 
 export default CameraScreen;
-
 
 const styles = StyleSheet.create({
   container: {
