@@ -15,35 +15,60 @@ import {
 import { validateImage } from '../utils/imageValidator';
 import { getQRCodeStatus } from '../utils/statusHelper';
 
-const MAX_IMAGE_SIZE_BYTES = 500 * 1024; // 500 KB
-const MAX_WIDTH = 1000;
-const MAX_HEIGHT = 1000;
-
 // POST /api/test-strips/upload
 export const uploadTestStrip = async (req: Request, res: Response) => {
   try {
-    if (!req?.file) return res.status(400).json({ error: 'No file uploaded' });
+    // 1. Ensure file exists
+    if (!req?.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
 
+    // 2. Validate file type
     if (!['image/png', 'image/jpeg'].includes(req.file.mimetype)) {
-      return res.status(400).json({ error: 'Unsupported file format' });
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ error: 'Unsupported file format. Only JPEG and PNG are allowed.' });
     }
 
     const filePath = req.file.path;
     const fileBuffer = fs.readFileSync(filePath);
-    const dimensions = getImageSize(fileBuffer);
+
+    // 3. Validate dimensions and size
+    let dimensions;
+    try {
+      dimensions = getImageSize(fileBuffer);
+      if (!dimensions.width || !dimensions.height) throw new Error('Invalid image dimensions');
+    } catch (err) {
+      fs.unlinkSync(filePath);
+      return res.status(400).json({ error: 'Unable to read image dimensions' });
+    }
+
     const imageSize = req.file.size;
-
     const validationError = validateImage(imageSize, dimensions);
-    if (validationError) return res.status(400).json({ error: validationError });
+    if (validationError) {
+      fs.unlinkSync(filePath);
+      return res.status(400).json({ error: validationError });
+    }
 
+    // 4. Extract QR Code
     const qrCode = await extractQRCode(filePath);
-    const existing = await db.query(SELECT_BY_QR, [qrCode]);
-    if (existing.rows.length > 0) return res.status(409).json({ message: 'Duplicate QR code' });
+    if (!qrCode) {
+      fs.unlinkSync(filePath);
+      return res.status(422).json({ error: 'No QR code detected in image' });
+    }
 
+    // 5. Check for duplicates
+    const existing = await db.query(SELECT_BY_QR, [qrCode]);
+    if (existing.rows.length > 0) {
+      fs.unlinkSync(filePath);
+      return res.status(409).json({ message: 'Duplicate QR code. This strip was already submitted.' });
+    }
+
+    // 6. Derive status and thumbnail
     const status = getQRCodeStatus(qrCode);
     const thumbnailPath = await generateThumbnail(filePath, 'uploads');
     const dimensionText = `${dimensions.width}x${dimensions.height}`;
 
+    // 7. Insert into DB
     await db.query(INSERT_SUBMISSION, [
       qrCode,
       filePath,
@@ -53,7 +78,7 @@ export const uploadTestStrip = async (req: Request, res: Response) => {
       status,
     ]);
 
-    res.json({
+    return res.json({
       qrCode,
       status,
       thumbnailPath,
@@ -61,9 +86,20 @@ export const uploadTestStrip = async (req: Request, res: Response) => {
       dimensions,
       processedAt: new Date().toISOString(),
     });
+
   } catch (err) {
-    console.error('Upload Error:', err);
-    res.status(500).json({ error: 'Failed to process image' });
+    console.error('[Upload Error]', err);
+
+    // Attempt to clean up the file if it exists
+    if (req?.file?.path && fs.existsSync(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (unlinkErr) {
+        console.error('Failed to clean up uploaded file:', unlinkErr);
+      }
+    }
+
+    return res.status(500).json({ error: 'Failed to process image. Please try again later.' });
   }
 };
 
