@@ -9,7 +9,8 @@ import {
   INSERT_SUBMISSION,
   SELECT_HISTORY,
   SELECT_BY_ID,
-  SELECT_PAGINATED
+  SELECT_PAGINATED,
+  SELECT_BY_QR
 } from '../db/queries/testStripQueries';
 
 // POST /api/test-strips/upload
@@ -25,6 +26,11 @@ export const uploadTestStrip = async (req: Request, res: Response) => {
 
     const filePath = req.file.path;
     const qrCode = await extractQRCode(filePath);
+
+    const existing = await db.query( SELECT_BY_QR,[qrCode] );
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ message: 'Duplicate QR code' });
+    }
 
     let status = 'invalid';
     if (qrCode?.startsWith('ELI-2025')) status = 'valid';
