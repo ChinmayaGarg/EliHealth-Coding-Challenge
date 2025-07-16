@@ -9,15 +9,11 @@ import {
   Alert,
   TouchableOpacity,
 } from 'react-native';
-import * as FileSystem from 'expo-file-system';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
-import { RootStackParamList } from '../../App';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { CameraCapturedPicture } from 'expo-camera';
-import { Camera } from 'expo-camera';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { RootStackParamList } from '../../App';
 
 type CameraScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -26,75 +22,45 @@ type CameraScreenNavigationProp = NativeStackNavigationProp<
 
 const CameraScreen = () => {
   const navigation = useNavigation<CameraScreenNavigationProp>();
-//   const cameraRef = useRef<ExpoCamera>(null);
-const cameraRef = useRef<any>(null);
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const cameraRef = useRef<any>(null);
+  const [hasPermission, requestPermission] = useCameraPermissions();
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [permission, requestPermission] = useCameraPermissions();
+
   useEffect(() => {
     (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
+      const { status } = await requestPermission();
+      if (status !== 'granted') {
+        Alert.alert('Camera permission is required to continue.');
+      }
     })();
   }, []);
 
-  if (!permission) {
-    // Camera permissions are still loading.
-    return <View />;
-  }
-
-  if (!permission.granted) {
-    // Camera permissions are not granted yet.
-    return (
-      <View style={styles.container}>
-        <Text style={styles.message}>We need your permission to show the camera</Text>
-        <Button onPress={requestPermission} title="grant permission" />
-      </View>
-    );
-  }
-
-
-
   const takePicture = async () => {
-    // alert("Pressed");
-    // if (cameraRef.current) {
-      const photo = await cameraRef.current.takePictureAsync();
-      setImageUri(photo.uri);
-    // }
+    if (!cameraRef.current) return;
+    const photo = await cameraRef.current.takePictureAsync();
+    setImageUri(photo.uri);
   };
 
-  const retake = () => {
-    setImageUri(null);
-  };
+  const retake = () => setImageUri(null);
 
   const submitPhoto = async () => {
     if (!imageUri) return;
 
     setIsUploading(true);
     const formData = new FormData();
-
     const fileName = imageUri.split('/').pop()!;
-    const fileType = 'image/jpeg';
-
     formData.append('image', {
       uri: imageUri,
       name: fileName,
-      type: fileType,
+      type: 'image/jpeg',
     } as any);
 
     try {
-      const response = await axios.post(
-        'http://localhost:3000/api/test-strips/upload',
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-      console.log('Upload successful:', response?.data);
-      Alert.alert('Success', `QR Code: ${(response?.data as any)?.qrCode}`);
+      const { data } = await axios.post('http://localhost:3000/api/test-strips/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      Alert.alert('Success', `QR Code: ${(data as any)?.qrCode}`);
       setImageUri(null);
     } catch (error: any) {
       console.error('Upload failed:', error?.response?.data || error.message);
@@ -104,21 +70,20 @@ const cameraRef = useRef<any>(null);
     }
   };
 
-  if (hasPermission === null) {
-    return <View><Text>Requesting camera permission...</Text></View>;
-  }
-
-  if (hasPermission === false) {
-    return <View><Text>No access to camera</Text></View>;
+  if (!hasPermission) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.message}>Camera permission is required</Text>
+        <Button onPress={requestPermission} title="Grant Permission" />
+      </View>
+    );
   }
 
   return (
     <View style={styles.container}>
       {!imageUri ? (
         <>
-          {/* <Camera ref={cameraRef} style={styles.camera} type={'back'}/> */}
-          <CameraView style={styles.camera} facing={"back"} ref={cameraRef}/>
-          {/* <Camera style={styles.camera} type={CameraType?.back} ref={cameraRef} /> */}
+          <CameraView style={styles.camera} facing="back" ref={cameraRef} />
           <View style={styles.controls}>
             <TouchableOpacity style={styles.button} onPress={takePicture}>
               <Text style={styles.buttonText}>Capture</Text>
@@ -158,7 +123,8 @@ const styles = StyleSheet.create({
   },
   message: {
     textAlign: 'center',
-    paddingBottom: 10,
+    padding: 16,
+    fontSize: 16,
   },
   camera: {
     flex: 1,
@@ -166,6 +132,7 @@ const styles = StyleSheet.create({
   controls: {
     padding: 20,
     alignItems: 'center',
+    backgroundColor: '#f9f9f9',
   },
   button: {
     backgroundColor: '#007bff',
@@ -177,6 +144,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '500',
   },
   link: {
     marginTop: 10,
@@ -184,11 +152,13 @@ const styles = StyleSheet.create({
   linkText: {
     color: '#007bff',
     fontSize: 14,
+    fontWeight: '500',
   },
   previewContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   preview: {
     width: '90%',
