@@ -1,5 +1,5 @@
 import express from 'express';
-import multer from 'multer';
+const multer = require('multer');
 import {
   uploadTestStrip,
   getTestStripHistory,
