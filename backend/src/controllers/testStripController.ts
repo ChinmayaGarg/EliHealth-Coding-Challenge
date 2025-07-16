@@ -14,7 +14,7 @@ import {
 } from '../db/queries/testStripQueries';
 import { validateImage } from '../utils/imageValidator';
 import { getQRCodeStatus } from '../utils/statusHelper';
-import {UUID_REGEX} from '../constants';
+import {UUID_REGEX, FILENAME_REGEX} from '../constants';
 
 // POST /api/test-strips/upload
 export const uploadTestStrip = async (req: Request, res: Response) => {
@@ -198,15 +198,29 @@ export const getTestStripById = async (req: Request, res: Response) => {
   }
 };
 
-// GET /api/test-strips/uploads/:filename
 export const getImageByFilename = (req: Request, res: Response) => {
   const { filename } = req.params;
+
+  // Validate filename format
+  if (!FILENAME_REGEX.test(filename)) {
+    return res.status(400).json({ error: 'Invalid filename format' });
+  }
+
   const filePath = path.join(__dirname, '../../uploads', filename);
 
-  res.sendFile(filePath, (err) => {
+  // Check if file exists before attempting to send
+  fs.access(filePath, fs.constants.F_OK, (err) => {
     if (err) {
-      console.error('Image send error:', err);
-      res.status(404).json({ error: 'Image not found' });
+      console.error('File not found:', filePath);
+      return res.status(404).json({ error: 'Image not found' });
     }
+
+    // Serve the file
+    res.sendFile(filePath, (err) => {
+      if (err) {
+        console.error('Image send error:', err);
+        res.status(500).json({ error: 'Failed to send image' });
+      }
+    });
   });
 };
