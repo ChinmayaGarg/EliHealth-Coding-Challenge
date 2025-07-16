@@ -103,19 +103,36 @@ export const uploadTestStrip = async (req: Request, res: Response) => {
   }
 };
 
-// GET /api/test-strips/history
+/**
+ * Handles GET /api/test-strips/history
+ * Returns all uploaded test strip records with URLs for accessing images
+ */
 export const getTestStripHistory = async (req: Request, res: Response) => {
   try {
+    // Query all history records from the database
     const { rows } = await db.query(SELECT_HISTORY);
+
+    // If no history exists, return a 404 response
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ message: 'No history found.' });
+    }
+
+    // Construct the base URL for images (e.g., http://localhost:3000)
     const host = req.protocol + '://' + req.get('host');
 
-    const updatedRows = rows.map((row: any) => ({
-      ...row,
-      imageUrl: `${host}/api/test-strips/${row.filename}`,
-    }));
+    // Map over each row to add a complete image URL
+    const updatedRows = rows.map((row: any) => {
+      const filename = row.filename?.trim(); // Safely trim the filename
+      return {
+        ...row,
+        imageUrl: filename ? `${host}/api/test-strips/${filename}` : null, // Only add if filename is valid
+      };
+    });
 
+    // Return the enriched rows
     res.json(updatedRows);
   } catch (err) {
+    // Log and return server error if something goes wrong
     console.error('Error fetching history:', err);
     res.status(500).json({ error: 'Failed to fetch history' });
   }
