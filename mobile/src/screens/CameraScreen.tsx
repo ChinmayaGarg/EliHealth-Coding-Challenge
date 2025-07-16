@@ -14,7 +14,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { RootStackParamList } from '../../App';
-import { checkImageBrightness } from '../utils/checkImageQuality';
+import { checkImageBrightness, estimateBlur } from '../utils/checkImageQuality';
+
 
 type CameraScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -57,6 +58,17 @@ const CameraScreen = () => {
       setImageUri(null);
       return;
     }
+
+
+    const blurScore = await estimateBlur(imageUri);
+  console.log('Blur Variance:', blurScore);
+
+  if (blurScore < 150) {  // Experimentally chosen threshold
+    Alert.alert('Image is too blurry. Please retake.');
+    setIsUploading(false);
+    setImageUri(null);
+    return;
+  }
 
     const formData = new FormData();
     const fileName = imageUri.split('/').pop()!;
