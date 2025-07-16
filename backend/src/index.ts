@@ -99,6 +99,28 @@ app.post('/api/test-strips/upload', upload.single('image'), async (req, res) => 
   }
 });
 
+// Get all submissions (paginated)
+app.get('/api/test-strips', async (req, res) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 10;
+  const offset = (page - 1) * limit;
+
+  try {
+    const { rows } = await db.query(
+      `SELECT id, qr_code, status, thumbnail_path, image_size, image_dimensions, created_at
+       FROM test_strip_submissions
+       ORDER BY created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+
+    return res.json({ data: rows, page, limit });
+  } catch (err) {
+    console.error('Fetch Error:', err);
+    return res.status(500).json({ error: 'Failed to fetch submissions' });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Eli backend listening at http://localhost:${PORT}`);
