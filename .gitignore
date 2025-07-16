@@ -1,6 +1,7 @@
 # Node modules for both backend and mobile
 node_modules/
 **/node_modules/
+**/package-lock.json
 
 # Logs
 *.log
@@ -18,6 +19,7 @@ pids
 .env
 .env.local
 .env.*.local
+**/.env.**
 
 # Uploaded files
 uploads/
