@@ -18,6 +18,12 @@ const PORT = 3000;
 
 // Enable CORS (important for frontend integration)
 app.use(cors());
+// PostgreSQL client
+const db = new Client({
+  connectionString: process.env.DATABASE_URL,
+});
+db.connect();
+
 // Health check
 app.get('/', (req, res) => {
   res.send('Eli Backend is running!');
