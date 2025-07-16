@@ -42,7 +42,7 @@ const HistoryScreen = () => {
       const response = await axios.get<Submission[]>('http://localhost:3000/api/test-strips/history');
       setData(response.data);
     } catch (error) {
-      console.error('Failed to fetch history:', error);
+      // console.error('Failed to fetch history:', error);
       Alert.alert('Error', 'Could not load test strip history.');
     } finally {
       setLoading(false);
