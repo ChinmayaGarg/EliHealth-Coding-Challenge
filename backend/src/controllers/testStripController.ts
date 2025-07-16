@@ -138,16 +138,35 @@ export const getTestStripHistory = async (req: Request, res: Response) => {
   }
 };
 
-// GET /api/test-strips
+/**
+ * Handles GET /api/test-strips?page=1&limit=10
+ * Returns paginated test strip records
+ */
 export const getTestStripsPaginated = async (req: Request, res: Response) => {
+  // Parse pagination params from query string
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 10;
+
+  // Ensure page and limit are valid
+  if (page <= 0 || limit <= 0) {
+    return res.status(400).json({ error: 'Page and limit must be positive integers' });
+  }
+
   const offset = (page - 1) * limit;
 
   try {
+    // Query paginated rows from the database
     const { rows } = await db.query(SELECT_PAGINATED, [limit, offset]);
+
+    // If no results found for page, return empty array
+    if (!rows || rows.length === 0) {
+      return res.status(200).json({ data: [], page, limit, message: 'No records found on this page' });
+    }
+
+    // Return paginated data
     res.json({ data: rows, page, limit });
   } catch (err) {
+    // Handle database or query errors
     console.error('Fetch Error:', err);
     res.status(500).json({ error: 'Failed to fetch submissions' });
   }
