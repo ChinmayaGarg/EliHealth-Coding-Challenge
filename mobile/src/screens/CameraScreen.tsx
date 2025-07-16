@@ -63,8 +63,12 @@ const CameraScreen = () => {
       Alert.alert('Success', `QR Code: ${(data as any)?.qrCode}`);
       setImageUri(null);
     } catch (error: any) {
-      console.error('Upload failed:', error?.response?.data || error.message);
-      Alert.alert('Upload Failed', 'Could not upload image.');
+      if (error?.response?.status === 409) {
+        Alert.alert('Duplicate', 'This test strip has already been submitted.');
+      } else {
+        console.error('Upload failed:', error?.response?.data || error.message);
+        Alert.alert('Upload Failed', 'Could not upload image.');
+      }
     } finally {
       setIsUploading(false);
     }
