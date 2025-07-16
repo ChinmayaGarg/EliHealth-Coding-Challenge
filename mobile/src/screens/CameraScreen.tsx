@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { RootStackParamList } from '../../App';
+import { checkImageBrightness } from '../utils/checkImageQuality';
 
 type CameraScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -48,6 +49,15 @@ const CameraScreen = () => {
     if (!imageUri) return;
 
     setIsUploading(true);
+
+    const isBrightEnough = await checkImageBrightness(imageUri);
+    if (!isBrightEnough) {
+      Alert.alert('Image Too Dark', 'Please take a clearer picture in better lighting.');
+      setIsUploading(false);
+      setImageUri(null);
+      return;
+    }
+
     const formData = new FormData();
     const fileName = imageUri.split('/').pop()!;
     formData.append('image', {
