@@ -14,6 +14,7 @@ import {
 } from '../db/queries/testStripQueries';
 import { validateImage } from '../utils/imageValidator';
 import { getQRCodeStatus } from '../utils/statusHelper';
+import {UUID_REGEX} from '../constants';
 
 // POST /api/test-strips/upload
 export const uploadTestStrip = async (req: Request, res: Response) => {
@@ -172,16 +173,24 @@ export const getTestStripsPaginated = async (req: Request, res: Response) => {
   }
 };
 
-// GET /api/test-strips/:id
 export const getTestStripById = async (req: Request, res: Response) => {
   const { id } = req.params;
 
+  // Validate that the ID is a properly formatted UUID
+  if (!UUID_REGEX.test(id)) {
+    return res.status(400).json({ error: 'Invalid ID format' });
+  }
+
   try {
+    // Fetch the test strip data from the database by ID
     const { rows } = await db.query(SELECT_BY_ID, [id]);
+
+    // If no matching record is found, return a 404 response
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Submission not found' });
     }
 
+    // Return the matched submission
     res.json(rows[0]);
   } catch (err) {
     console.error('Detail Error:', err);
