@@ -12,6 +12,8 @@ import {
   SELECT_PAGINATED,
   SELECT_BY_QR
 } from '../db/queries/testStripQueries';
+import { validateImage } from '../utils/imageValidator';
+import { getQRCodeStatus } from '../utils/statusHelper';
 
 const MAX_IMAGE_SIZE_BYTES = 500 * 1024; // 500 KB
 const MAX_WIDTH = 1000;
@@ -20,9 +22,7 @@ const MAX_HEIGHT = 1000;
 // POST /api/test-strips/upload
 export const uploadTestStrip = async (req: Request, res: Response) => {
   try {
-    if (!req?.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
+    if (!req?.file) return res.status(400).json({ error: 'No file uploaded' });
 
     if (!['image/png', 'image/jpeg'].includes(req.file.mimetype)) {
       return res.status(400).json({ error: 'Unsupported file format' });
@@ -33,27 +33,14 @@ export const uploadTestStrip = async (req: Request, res: Response) => {
     const dimensions = getImageSize(fileBuffer);
     const imageSize = req.file.size;
 
-    if (imageSize > MAX_IMAGE_SIZE_BYTES) {
-      return res.status(400).json({ error: 'Image size exceeds limit (500 KB).' });
-    }
+    const validationError = validateImage(imageSize, dimensions);
+    if (validationError) return res.status(400).json({ error: validationError });
 
-    if (dimensions.width! > MAX_WIDTH || dimensions.height! > MAX_HEIGHT) {
-      return res.status(400).json({
-        error: `Image dimensions exceed ${MAX_WIDTH}x${MAX_HEIGHT}`,
-        dimensions,
-      });
-    }
     const qrCode = await extractQRCode(filePath);
+    const existing = await db.query(SELECT_BY_QR, [qrCode]);
+    if (existing.rows.length > 0) return res.status(409).json({ message: 'Duplicate QR code' });
 
-    const existing = await db.query( SELECT_BY_QR,[qrCode] );
-    if (existing.rows.length > 0) {
-      return res.status(409).json({ message: 'Duplicate QR code' });
-    }
-
-    let status = 'invalid';
-    if (qrCode?.startsWith('ELI-2025')) status = 'valid';
-    else if (qrCode?.startsWith('ELI-2024')) status = 'expired';
-
+    const status = getQRCodeStatus(qrCode);
     const thumbnailPath = await generateThumbnail(filePath, 'uploads');
     const dimensionText = `${dimensions.width}x${dimensions.height}`;
 
@@ -63,10 +50,10 @@ export const uploadTestStrip = async (req: Request, res: Response) => {
       thumbnailPath,
       imageSize,
       dimensionText,
-      status
+      status,
     ]);
 
-    return res.json({
+    res.json({
       qrCode,
       status,
       thumbnailPath,
@@ -76,7 +63,7 @@ export const uploadTestStrip = async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error('Upload Error:', err);
-    return res.status(500).json({ error: 'Failed to process image' });
+    res.status(500).json({ error: 'Failed to process image' });
   }
 };
 
