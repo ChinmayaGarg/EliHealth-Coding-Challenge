@@ -15,7 +15,9 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Camera">
+      <Stack.Navigator initialRouteName="Camera" screenOptions={{
+    headerShown: false
+  }}>
         <Stack.Screen name="Camera" component={CameraScreen} />
         <Stack.Screen name="History" component={HistoryScreen} />
       </Stack.Navigator>
