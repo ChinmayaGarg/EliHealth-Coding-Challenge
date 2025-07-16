@@ -13,10 +13,14 @@ import {
   SELECT_BY_QR
 } from '../db/queries/testStripQueries';
 
+const MAX_IMAGE_SIZE_BYTES = 500 * 1024; // 500 KB
+const MAX_WIDTH = 1000;
+const MAX_HEIGHT = 1000;
+
 // POST /api/test-strips/upload
 export const uploadTestStrip = async (req: Request, res: Response) => {
   try {
-    if (!req.file) {
+    if (!req?.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
@@ -25,6 +29,20 @@ export const uploadTestStrip = async (req: Request, res: Response) => {
     }
 
     const filePath = req.file.path;
+    const fileBuffer = fs.readFileSync(filePath);
+    const dimensions = getImageSize(fileBuffer);
+    const imageSize = req.file.size;
+
+    if (imageSize > MAX_IMAGE_SIZE_BYTES) {
+      return res.status(400).json({ error: 'Image size exceeds limit (500 KB).' });
+    }
+
+    if (dimensions.width! > MAX_WIDTH || dimensions.height! > MAX_HEIGHT) {
+      return res.status(400).json({
+        error: `Image dimensions exceed ${MAX_WIDTH}x${MAX_HEIGHT}`,
+        dimensions,
+      });
+    }
     const qrCode = await extractQRCode(filePath);
 
     const existing = await db.query( SELECT_BY_QR,[qrCode] );
@@ -37,9 +55,6 @@ export const uploadTestStrip = async (req: Request, res: Response) => {
     else if (qrCode?.startsWith('ELI-2024')) status = 'expired';
 
     const thumbnailPath = await generateThumbnail(filePath, 'uploads');
-    const fileBuffer = fs.readFileSync(filePath);
-    const dimensions = getImageSize(fileBuffer);
-    const imageSize = req.file.size;
     const dimensionText = `${dimensions.width}x${dimensions.height}`;
 
     await db.query(INSERT_SUBMISSION, [
