@@ -23,3 +23,5 @@ export const SELECT_PAGINATED = `
   ORDER BY created_at DESC
   LIMIT $1 OFFSET $2
 `;
+
+export const SELECT_BY_QR = `SELECT 1 FROM test_strip_submissions WHERE qr_code = $1 LIMIT 1`;
