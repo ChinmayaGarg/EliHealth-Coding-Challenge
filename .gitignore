@@ -1,1 +1,58 @@
+# Node modules for both backend and mobile
+node_modules/
+**/node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime files
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# dotenv env files
+.env
+.env.local
+.env.*.local
+
+# Uploaded files
 uploads/
+backend/uploads/
+
+# Compiled files (TypeScript / Babel)
+*.tsbuildinfo
+dist/
+build/
+out/
+
+# IDE and system folders
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# Expo / React Native
+.expo/
+.expo-shared/
+*.apk
+*.aab
+*.keystore
+
+# macOS metadata
+*.DS_Store
+
+# Docker
+**/postgres_data/
+docker-compose.override.yml
+
+# SQLite (if used during development)
+*.db
+
+# Debug or error snapshots
+coverage/
+*.tgz
