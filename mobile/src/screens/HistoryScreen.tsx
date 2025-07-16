@@ -2,87 +2,84 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
+  StyleSheet,
   Image,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-type HistoryItem = {
-  id: number;
-  filename: string;
-  qrCode: string;
-  created_at: string;
-  imageUrl: string;
-};
-
 type HistoryScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'History'
 >;
 
+type Submission = {
+  id: number;
+  qrCode: string;
+  status: string;
+  filename: string;
+  created_at: string;
+  imageUrl: string;
+};
+
 const HistoryScreen = () => {
   const navigation = useNavigation<HistoryScreenNavigationProp>();
-  const [submissions, setSubmissions] = useState<HistoryItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [data, setData] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchHistory = async () => {
+    try {
+      const response = await axios.get<Submission[]>('http://localhost:3000/api/test-strips/history');
+      setData(response.data);
+    } catch (error) {
+      console.error('Failed to fetch history:', error);
+      Alert.alert('Error', 'Could not load test strip history.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const response = await axios.get<HistoryItem[]>(
-          'http://localhost:3000/api/test-strips/history'
-        );
-        setSubmissions(response.data);
-      } catch (error) {
-        console.error('Failed to fetch history:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchHistory();
   }, []);
 
-  const renderItem = ({ item }: { item: HistoryItem }) => (
+  const renderItem = ({ item }: { item: Submission }) => (
     <View style={styles.card}>
-      <Image
-        source={{ uri: `${item.imageUrl}` }}
-        style={styles.image}
-        resizeMode="cover"
-      />
-      <Text style={styles.qr}>QR Code: {item.qrCode}</Text>
-      <Text style={styles.date}>
-        Submitted on: {new Date(item.created_at).toLocaleString()}
-      </Text>
+      <Image source={{ uri: item.imageUrl }} style={styles.thumbnail} />
+      <View style={styles.details}>
+        <Text style={styles.qrCode}>QR Code: {item.qrCode || 'N/A'}</Text>
+        <Text style={styles.status}>Status: {item.status}</Text>
+        <Text style={styles.timestamp}>Date: {new Date(item.created_at).toLocaleString()}</Text>
+      </View>
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        onPress={() => navigation.navigate('Camera')}
-        style={styles.backButton}
-      >
-        <Text style={styles.backText}>← Back to Camera</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.heading}>Submission History</Text>
-
       {loading ? (
-        <ActivityIndicator size="large" color="#000" />
+        <ActivityIndicator size="large" color="#007bff" />
+      ) : data.length === 0 ? (
+        <Text style={styles.message}>No submissions found.</Text>
       ) : (
         <FlatList
-          data={submissions}
+          data={data}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
         />
       )}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => navigation.navigate('Camera')}
+      >
+        <Text style={styles.backText}>← Back to Camera</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -93,48 +90,60 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingTop: 40,
-  },
-  backButton: {
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-  },
-  backText: {
-    fontSize: 16,
-    color: '#007bff',
-  },
-  heading: {
-    fontSize: 20,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 10,
+    paddingTop: 16,
   },
   list: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 80,
   },
   card: {
-    marginBottom: 20,
-    borderRadius: 10,
+    flexDirection: 'row',
     backgroundColor: '#f1f1f1',
-    padding: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+    alignItems: 'center',
   },
-  image: {
-    width: '100%',
-    height: 180,
+  thumbnail: {
+    width: 80,
+    height: 80,
     borderRadius: 8,
-    marginBottom: 10,
+    marginRight: 12,
   },
-  qr: {
+  details: {
+    flex: 1,
+  },
+  qrCode: {
     fontSize: 16,
     fontWeight: '500',
+    marginBottom: 4,
   },
-  date: {
+  status: {
     fontSize: 14,
     color: '#555',
-    marginTop: 4,
+    marginBottom: 2,
+  },
+  timestamp: {
+    fontSize: 12,
+    color: '#888',
+  },
+  message: {
+    textAlign: 'center',
+    fontSize: 16,
+    paddingTop: 40,
+    color: '#666',
+  },
+  backButton: {
+    position: 'absolute',
+    bottom: 20,
+    alignSelf: 'center',
+    backgroundColor: '#007bff',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+  },
+  backText: {
+    color: '#fff',
+    fontSize: 16,
   },
 });
