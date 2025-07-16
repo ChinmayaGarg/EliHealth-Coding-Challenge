@@ -143,6 +143,26 @@ app.get('/api/test-strips/history', async (req, res) => {
   }
 });
 
+// Get one submission by ID
+app.get('/api/test-strips/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { rows } = await db.query(
+      `SELECT * FROM test_strip_submissions WHERE id = $1`,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Submission not found' });
+    }
+
+    return res.json(rows[0]);
+  } catch (err) {
+    console.error('Detail Error:', err);
+    return res.status(500).json({ error: 'Failed to fetch submission' });
+  }
+});
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Eli backend listening at http://localhost:${PORT}`);
