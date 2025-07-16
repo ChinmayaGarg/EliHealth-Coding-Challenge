@@ -16,7 +16,6 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { RootStackParamList } from '../../App';
 import { checkImageBrightness, estimateBlur } from '../utils/checkImageQuality';
 
-
 type CameraScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'Camera'
@@ -30,67 +29,61 @@ const CameraScreen = () => {
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      const { status } = await requestPermission();
+    requestPermission().then(({ status }) => {
       if (status !== 'granted') {
-        Alert.alert('Camera permission is required to continue.');
+        Alert.alert('Permission Required', 'Camera permission is needed to proceed.');
       }
-    })();
+    });
   }, []);
 
-  const takePicture = async () => {
-    if (!cameraRef.current) return;
-    const photo = await cameraRef.current.takePictureAsync();
-    setImageUri(photo.uri);
+  const handleCapture = async () => {
+    if (cameraRef.current) {
+      const photo = await cameraRef.current.takePictureAsync();
+      setImageUri(photo.uri);
+    }
   };
 
-  const retake = () => setImageUri(null);
+  const resetImage = () => setImageUri(null);
 
-  const submitPhoto = async () => {
+  const handleSubmit = async () => {
     if (!imageUri) return;
-
     setIsUploading(true);
 
-    const isBrightEnough = await checkImageBrightness(imageUri);
-    if (!isBrightEnough) {
-      Alert.alert('Image Too Dark', 'Please take a clearer picture in better lighting.');
-      setIsUploading(false);
-      setImageUri(null);
-      return;
-    }
-
-
-    const blurScore = await estimateBlur(imageUri);
-  console.log('Blur Variance:', blurScore);
-
-  if (blurScore < 150) {  // Experimentally chosen threshold
-    Alert.alert('Image is too blurry. Please retake.');
-    setIsUploading(false);
-    setImageUri(null);
-    return;
-  }
-
-    const formData = new FormData();
-    const fileName = imageUri.split('/').pop()!;
-    formData.append('image', {
-      uri: imageUri,
-      name: fileName,
-      type: 'image/jpeg',
-    } as any);
-
     try {
+      const isBrightEnough = await checkImageBrightness(imageUri);
+      if (!isBrightEnough) {
+        throw new Error('Image Too Dark');
+      }
+
+      const blurScore = await estimateBlur(imageUri);
+      if (blurScore < 150) {
+        throw new Error('Image is too blurry');
+      }
+
+      const fileName = imageUri.split('/').pop()!;
+      const formData = new FormData();
+      formData.append('image', {
+        uri: imageUri,
+        name: fileName,
+        type: 'image/jpeg',
+      } as unknown as Blob);
+
       const { data } = await axios.post('http://localhost:3000/api/test-strips/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      Alert.alert('Success', `QR Code: ${(data as any)?.qrCode}`);
-      setImageUri(null);
+
+      Alert.alert('Success', `QR Code: ${(data as any).qrCode}`);
+      resetImage();
     } catch (error: any) {
-      if (error?.response?.status === 409) {
-        Alert.alert('Duplicate', 'This test strip has already been submitted.');
-      } else {
-        console.error('Upload failed:', error?.response?.data || error.message);
-        Alert.alert('Upload Failed', 'Could not upload image.');
-      }
+      const message =
+        error?.message === 'Image Too Dark'
+          ? 'Please retake in better lighting.'
+          : error?.message === 'Image is too blurry'
+          ? 'Please retake a sharper image.'
+          : error?.response?.status === 409
+          ? 'This test strip was already submitted.'
+          : 'Upload failed. Please try again.';
+      Alert.alert('Error', message);
     } finally {
       setIsUploading(false);
     }
@@ -111,7 +104,7 @@ const CameraScreen = () => {
         <>
           <CameraView style={styles.camera} facing="back" ref={cameraRef} />
           <View style={styles.controls}>
-            <TouchableOpacity style={styles.button} onPress={takePicture}>
+            <TouchableOpacity style={styles.button} onPress={handleCapture}>
               <Text style={styles.buttonText}>Capture</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.link} onPress={() => navigation.navigate('History')}>
@@ -126,10 +119,10 @@ const CameraScreen = () => {
             <ActivityIndicator size="large" color="#000" />
           ) : (
             <>
-              <TouchableOpacity style={styles.button} onPress={submitPhoto}>
+              <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={isUploading}>
                 <Text style={styles.buttonText}>Submit</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.link} onPress={retake}>
+              <TouchableOpacity style={styles.link} onPress={resetImage}>
                 <Text style={styles.linkText}>Retake</Text>
               </TouchableOpacity>
             </>
@@ -141,6 +134,7 @@ const CameraScreen = () => {
 };
 
 export default CameraScreen;
+
 
 const styles = StyleSheet.create({
   container: {
