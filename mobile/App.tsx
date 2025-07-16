@@ -2,10 +2,8 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import CameraScreen from './src/screens/CameraScreen';
-import HistoryScreen from './src/screens/HistoryScreen';
-import { Provider as PaperProvider } from 'react-native-paper';
-
+import RootNavigator from './src/navigation';
+import NetworkStatusBanner from './src/components/NetworkStatusBanner';
 
 export type RootStackParamList = {
   Camera: undefined;
@@ -16,15 +14,11 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
-    <PaperProvider>
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Camera" screenOptions={{
-    headerShown: false
-  }}>
-        <Stack.Screen name="Camera" component={CameraScreen} />
-        <Stack.Screen name="History" component={HistoryScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
-    </PaperProvider>
+    <>
+      <NavigationContainer>
+        <RootNavigator />
+      </NavigationContainer>
+      <NetworkStatusBanner />
+    </>
   );
 }
