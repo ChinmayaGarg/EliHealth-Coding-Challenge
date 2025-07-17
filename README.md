@@ -47,12 +47,19 @@ Follow these steps to set up the project locally using Docker:
 ```bash
 git clone https://github.com/ChinmayaGarg/test-strip-scanner.git
 cd test-strip-scanner
+```
 
+### 2. Run docker-compose
+```bash
 docker-compose up --build
+```
 
+### 3. Run frontend
+```bash
 cd mobile
 npm install
 npx expo start -c
+```
 
 Use Expo Go or a simulator/emulator to run the app on your device.
 
