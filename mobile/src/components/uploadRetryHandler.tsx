@@ -3,6 +3,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { getQueue, clearQueue } from '../utils/uploadQueue';
 import axios from 'axios';
 import { View } from 'react-native';
+import { API_URL } from '../config';
 
 const UploadRetryHandler = () => {
   useEffect(() => {
@@ -19,7 +20,7 @@ const UploadRetryHandler = () => {
           } as any);
 
           try {
-            await axios.post('http://localhost:3000/api/test-strips/upload', formData, {
+            await axios.post(`${API_URL}/test-strips/upload`, formData, {
               headers: { 'Content-Type': 'multipart/form-data' },
             });
             console.log(`Retry successful for ${item.name}`);

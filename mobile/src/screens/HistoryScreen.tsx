@@ -15,6 +15,8 @@ import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Snackbar } from 'react-native-paper';
+import { API_URL } from '../config';
+import NetInfo from '@react-native-community/netinfo';
 
 type HistoryScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -39,11 +41,15 @@ const HistoryScreen = () => {
 
   const fetchHistory = async () => {
     try {
-      const response = await axios.get<Submission[]>('http://localhost:3000/api/test-strips/history');
-      setData(response.data);
+      const response = await axios.get<Submission[]>(`${API_URL}/test-strips/history`);
+      setData(response?.data);
     } catch (error) {
       // console.error('Failed to fetch history:', error);
-      Alert.alert('Error', 'Could not load test strip history.');
+      if ((error  as any)?.response?.status === 404) {
+        Alert.alert('History not found', 'No tests uploaded yet.');
+      } else {
+        Alert.alert('Error', 'Could not load test strip history.');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -54,7 +60,13 @@ const HistoryScreen = () => {
     fetchHistory();
   }, []);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async() => {
+    const netState = await NetInfo.fetch();
+    if (!netState.isConnected) {
+      setLoading(false);
+      console.log('Offline — skipping history fetch');
+      return;
+    }
     setRefreshing(true);
     fetchHistory().then(() => {
         setSnackbarVisible(true);

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Alert } from 'react-native';
 import { checkImageBrightness, estimateBlur } from './checkImageQuality';
 import { addToQueue } from './uploadQueue';
+import { API_URL } from '../config';
 
 /**
  * Compresses image, checks brightness and blur, uploads or queues based on result.
@@ -54,7 +55,7 @@ export const processAndUploadImage = async (
     } as any);
 
     // 5. Upload
-    const { data } = await axios.post('http://localhost:3000/api/test-strips/upload', formData, {
+    const { data } = await axios.post(`${API_URL}/test-strips/upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
 
@@ -76,6 +77,8 @@ export const processAndUploadImage = async (
         }
     //   await addToQueue({ uri: manipulatedImage!.uri, name: fileName });
       Alert.alert('Offline', 'Upload will retry when back online.');
+    } else if (error?.response?.status === 404) {
+      Alert.alert('Invalid', 'QR Code not found or is invalid.');
     } else if (error?.response?.status === 409) {
       Alert.alert('Duplicate', 'This test strip was already submitted.');
     } else {
