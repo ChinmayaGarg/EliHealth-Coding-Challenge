@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { RootStackParamList } from '../../App';
 import { processAndUploadImage } from '../utils/imageProcessor';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 type CameraScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -39,7 +40,12 @@ const CameraScreen = () => {
   const handleCapture = async () => {
     if (cameraRef.current) {
       const photo = await cameraRef.current.takePictureAsync();
-      setImageUri(photo.uri);
+      const rotated = await ImageManipulator.manipulateAsync(
+      photo.uri,
+      [{ rotate: 90 }],
+      { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
+    );
+      setImageUri(rotated.uri);
     }
   };
 
