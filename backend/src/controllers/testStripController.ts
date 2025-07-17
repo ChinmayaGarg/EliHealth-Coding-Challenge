@@ -32,7 +32,7 @@ export const uploadTestStrip = async (req: Request, res: Response) => {
     if (validationError) return res.status(400).json({ error: validationError });
 
     const qrCode = await extractQRCodeFromFile(filePath);
-    if (!qrCode) throw new Error('QR code could not be extracted or is invalid.');
+    if (!qrCode) return res.status(404).json({ message: 'QR Code not found or Invalid' });
     const isDuplicate = await isDuplicateQRCode(qrCode);
     if (isDuplicate) return res.status(409).json({ message: 'Duplicate QR code' });
 
@@ -68,6 +68,7 @@ export const getTestStripHistory = async (req: Request, res: Response) => {
 
     const updatedRows = rows.map((row: any) => {
       const filename = row.filename?.trim();
+      // const host =  'https://s4bcldkq-3000.use.devtunnels.ms'; 
       return {
         ...row,
         imageUrl: filename ? `${host}/api/test-strips/${filename}` : null,
